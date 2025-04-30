@@ -1,5 +1,11 @@
 # Tonnetz Visualizer
 
+<video width="100%" controls>
+  <source src="demo-video.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
+
 ## What is it?
 
 The Tonnetz Visualizer is an interactive web application designed to explore and understand the Tonnetz, a visual representation of musical pitch relationships.
@@ -23,5 +29,5 @@ This interface is fully interactive. You can:
 *   **Drag and Zoom:** Drag to rotate the network and zoom in/out to examine the relationships from different perspectives.
 
 ## Demo
+You can see the Tonnetz Visualizer in action in the embedded video above.
 
-Watch the [demo video](resources/demo-video.mp4) to see the Tonnetz Visualizer in action.
