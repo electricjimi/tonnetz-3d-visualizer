@@ -1,45 +1,79 @@
-import type { IntonationLimit } from '@/types';
+import type { IntonationLimit, TonnetzNode, TonnetzEdge } from '@/types';
 
-// Define node and edge types
-export interface TonnetzNode {
-  id: string; // e.g., "C", "G", "E", "Bb7", etc.
-  label: string;
-  x: number;
-  y: number;
-  z: number;
-  type: 'major' | 'minor' | 'dominant7' | 'other'; // Helps in styling or identification
+// --- Constants ---
+const NOTE_NAMES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const NOTE_NAMES_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+const A4_FREQUENCY = 440.0;
+const A4_MIDI_NOTE = 69; // MIDI note number for A4
+const C0_MIDI_NOTE = 12; // MIDI note number for C0
+
+// --- Helper Functions ---
+
+// Calculates MIDI note number from offsets (simple ET approximation for structure)
+// i = fifths, j = major thirds, k = minor sevenths (optional)
+// Reference: C4 (MIDI 60) at (0,0,0)
+function calculateMidiNote(i: number, j: number, k: number = 0, limit: IntonationLimit): number {
+  const C4_MIDI = 60;
+  // Use ET semitone steps for simplicity in mapping structure to MIDI
+  const fifthSemitones = 7; // P5
+  const thirdSemitones = 4; // M3
+  const seventhSemitones = 10; // m7 (approx. for 7/4)
+
+  let midiNote = C4_MIDI + (i * fifthSemitones) + (j * thirdSemitones);
+  if (limit === 7) {
+    midiNote += (k * seventhSemitones);
+  }
+  return midiNote;
 }
 
-export interface TonnetzEdge {
-  source: TonnetzNode;
-  target: TonnetzNode;
-  type: 'perfectFifth' | 'majorThird' | 'minorThird' | 'minorSeventh'; // Type of interval connection
+// Converts MIDI note number to frequency (Equal Temperament)
+function midiToFrequency(midiNote: number): number {
+  return A4_FREQUENCY * Math.pow(2, (midiNote - A4_MIDI_NOTE) / 12);
 }
 
-// Function to generate Tonnetz data
+// Converts MIDI note number to note name (e.g., "C#4")
+function midiToNoteName(midiNote: number, useSharps: boolean = true): string {
+    const octave = Math.floor(midiNote / 12) - 1; // Adjust octave (MIDI C4 is octave 4)
+    const noteIndex = midiNote % 12;
+    const noteName = useSharps ? NOTE_NAMES_SHARP[noteIndex] : NOTE_NAMES_FLAT[noteIndex];
+    return `${noteName}${octave}`;
+}
+
+// Gets the display label (without octave)
+function getNoteLabel(midiNote: number, useSharps: boolean = true): string {
+    const noteIndex = (midiNote % 12 + 12) % 12; // Ensure positive index
+    return useSharps ? NOTE_NAMES_SHARP[noteIndex] : NOTE_NAMES_FLAT[noteIndex];
+}
+
+// --- Main Generation Function ---
+
 export function generateTonnetzData(limit: IntonationLimit): { nodes: TonnetzNode[], edges: TonnetzEdge[] } {
   const nodes: TonnetzNode[] = [];
   const edges: TonnetzEdge[] = [];
-  const nodeMap = new Map<string, TonnetzNode>();
+  const nodeMap = new Map<string, TonnetzNode>(); // Use MIDI note number as key for uniqueness check
 
-  // --- Helper Functions ---
-  const addNode = (id: string, label: string, x: number, y: number, z: number, type: TonnetzNode['type']) => {
-    if (!nodeMap.has(id)) {
-      const newNode: TonnetzNode = { id, label, x, y, z, type };
-      nodes.push(newNode);
-      nodeMap.set(id, newNode);
-    }
-    return nodeMap.get(id)!;
+  const addNode = (midiNote: number, i: number, j: number, k: number, x: number, y: number, z: number, type: TonnetzNode['type']) => {
+      const nodeId = `node_${i}_${j}_${k}`; // Keep spatial ID
+      const nodeKey = midiNote.toString(); // Use MIDI for uniqueness map key
+
+      if (!nodeMap.has(nodeKey)) {
+        const frequency = midiToFrequency(midiNote);
+        const noteName = midiToNoteName(midiNote, true); // Use sharps for consistency
+        const label = getNoteLabel(midiNote, true);
+
+        const newNode: TonnetzNode = { id: nodeId, label, noteName, x, y, z, frequency, type };
+        nodes.push(newNode);
+        nodeMap.set(nodeKey, newNode); // Map MIDI note to node data
+      }
+      return nodeMap.get(nodeKey)!;
   };
 
-  const addEdge = (sourceId: string, targetId: string, type: TonnetzEdge['type']) => {
-    const sourceNode = nodeMap.get(sourceId);
-    const targetNode = nodeMap.get(targetId);
-    if (sourceNode && targetNode) {
-        // Avoid duplicate edges (check both directions)
+  const addEdge = (sourceNode: TonnetzNode | undefined, targetNode: TonnetzNode | undefined, type: TonnetzEdge['type']) => {
+    if (sourceNode && targetNode && sourceNode.id !== targetNode.id) {
+        // Avoid duplicate edges (check both directions using node IDs)
         const exists = edges.some(e =>
-            (e.source.id === sourceId && e.target.id === targetId) ||
-            (e.source.id === targetId && e.target.id === sourceId)
+            (e.source.id === sourceNode.id && e.target.id === targetNode.id) ||
+            (e.source.id === targetNode.id && e.target.id === sourceNode.id)
         );
         if (!exists) {
             edges.push({ source: sourceNode, target: targetNode, type });
@@ -49,77 +83,59 @@ export function generateTonnetzData(limit: IntonationLimit): { nodes: TonnetzNod
 
 
   // --- Tonnetz Generation Logic ---
-  // This is a simplified generation. A real Tonnetz wraps around topologically.
-  // We'll generate a flat section for visualization.
-  const range = 3; // How far out to generate from the center (C)
+  const range = 3; // How far out to generate from the center (adjust as needed)
   const scaleFactor = 2.5; // Spacing between nodes
 
-  for (let i = -range; i <= range; i++) { // Represents fifths axis (roughly x)
-    for (let j = -range; j <= range; j++) { // Represents thirds axis (roughly y)
-        // Basic Limit 5 (Fifths and Major Thirds)
-        const fifthOffset = i;
-        const thirdOffset = j;
+  for (let i = -range; i <= range; i++) { // Fifths axis
+    for (let j = -range; j <= range; j++) { // Thirds axis
 
-        // Calculate position (simplified planar projection for now)
-        // A true 3D Tonnetz embedding is more complex
-        const x = (fifthOffset * Math.sqrt(3) / 2 + thirdOffset * Math.sqrt(3) / 2) * scaleFactor;
-        const y = (fifthOffset * 1 / 2 - thirdOffset * 1 / 2) * scaleFactor;
-        const z = 0; // Keep it planar initially for simplicity, expand later if needed
+        // Limit 5 base node
+        const midiBase = calculateMidiNote(i, j, 0, 5);
+        const x = (i * Math.sqrt(3) / 2 + j * Math.sqrt(3) / 2) * scaleFactor;
+        const y = (i * 1 / 2 - j * 1 / 2) * scaleFactor;
+        const z = 0;
+        // Assign type based on structure (e.g., relative major/minor feel)
+        // This is heuristic; Tonnetz nodes are just pitches.
+        const nodeType: TonnetzNode['type'] = ((i + j) % 2 === 0) ? 'major' : 'minor';
+        const currentNode = addNode(midiBase, i, j, 0, x, y, z, nodeType);
 
-        // Determine the note name based on offsets from C (0,0)
-        // This requires a more robust music theory calculation involving interval stacking.
-        // Placeholder note names for now:
-        const noteId = `note_${i}_${j}`;
-        const noteLabel = `(${i},${j})`; // Replace with actual note name later
-        const nodeType: TonnetzNode['type'] = ( (i + j) % 2 === 0 ) ? 'major' : 'minor'; // Arbitrary type assignment
+        // Connect Neighbors (Limit 5)
+        const fifthNeighborMidi = calculateMidiNote(i + 1, j, 0, 5);
+        const majorThirdNeighborMidi = calculateMidiNote(i, j + 1, 0, 5);
+        const minorThirdNeighborMidi = calculateMidiNote(i + 1, j - 1, 0, 5); // P5 + m3 = M3 down
 
-        const currentNode = addNode(noteId, noteLabel, x, y, z, nodeType);
+        addEdge(currentNode, nodeMap.get(fifthNeighborMidi.toString()), 'perfectFifth');
+        addEdge(currentNode, nodeMap.get(majorThirdNeighborMidi.toString()), 'majorThird');
+        addEdge(currentNode, nodeMap.get(minorThirdNeighborMidi.toString()), 'minorThird'); // Representing the M3 downwards connection
 
-        // Connect with neighbors based on intervals
-        // Connect Perfect Fifth (move along i)
-        const fifthNeighborId = `note_${i + 1}_${j}`;
-        if (i < range) addEdge(noteId, fifthNeighborId, 'perfectFifth');
-
-        // Connect Major Third (move along j)
-        const majorThirdNeighborId = `note_${i}_${j + 1}`;
-         if (j < range) addEdge(noteId, majorThirdNeighborId, 'majorThird');
-
-        // Connect Minor Third (diagonal connection) - often represented
-        const minorThirdNeighborId = `note_${i + 1}_${j - 1}`;
-         if (i < range && j > -range) addEdge(noteId, minorThirdNeighborId, 'minorThird');
-
-
-        // Limit 7 additions (connections involving the Minor Seventh)
+        // Limit 7 additions
         if (limit === 7) {
-            // Add connections related to the harmonic seventh (ratio 7/4)
-            // This requires defining how the 7th dimension interacts with the 5-limit plane.
-            // A common approach projects it, creating additional connections.
-
-            // Example: Connect to a node representing the dominant seventh quality
-            // Let's assume moving in a 'k' direction (z-axis for simplicity) relates to the 7th limit
-             for (let k = -1; k <= 1; k+=2) { // Simple +/- z offset for 7th limit
-                if (Math.abs(i) + Math.abs(j) + Math.abs(k) <= range) { // Keep within overall range
-                    const z_7 = k * scaleFactor * 1.2; // Adjust z based on 'k'
-                    const x_7 = x; // Keep x, y same for this simple projection
+             // Generate nodes related to the 7th harmonic
+             // Simple approach: Offset in z, represent dominant quality
+             for (let k = -1; k <= 1; k += 2) { // Could represent +/- 7th relationship
+                 if (Math.abs(i) + Math.abs(j) + Math.abs(k) <= range) { // Keep within overall range
+                    const midi7 = calculateMidiNote(i, j, k, 7);
+                    const z_7 = k * scaleFactor * 1.2; // Arbitrary Z offset for 7th dimension
+                    const x_7 = x;
                     const y_7 = y;
-                    const seventhNodeId = `note_${i}_${j}_${k}`;
-                    const seventhNodeLabel = `(${i},${j},${k})`; // Indicate 7th limit
-                    const seventhNodeType: TonnetzNode['type'] = 'dominant7';
+                    const seventhNodeType: TonnetzNode['type'] = 'dominant7'; // Heuristic type
 
-                    const seventhNode = addNode(seventhNodeId, seventhNodeLabel, x_7, y_7, z_7, seventhNodeType);
+                    const seventhNode = addNode(midi7, i, j, k, x_7, y_7, z_7, seventhNodeType);
 
-                    // Connect the 5-limit node to its 7-limit counterpart
-                    addEdge(noteId, seventhNodeId, 'minorSeventh'); // Or a specific 'harmonicSeventh' type
+                    // Connect the 5-limit node to its 7-limit 'variant'
+                    // The interval isn't strictly m7 in ET if based on C4(0,0,0) and C7(0,0,1)
+                    addEdge(currentNode, seventhNode, 'minorSeventh');
 
-                    // Add connections between 7-limit nodes if desired (more complex)
-                     // Connect Perfect Fifth in the 7-limit layer
-                    const fifthNeighbor7Id = `note_${i + 1}_${j}_${k}`;
-                    if (i < range && nodeMap.has(fifthNeighbor7Id)) addEdge(seventhNodeId, fifthNeighbor7Id, 'perfectFifth');
+                    // Connect neighbors within the 7-limit 'layer'
+                    const fifthNeighbor7Midi = calculateMidiNote(i + 1, j, k, 7);
+                    const majorThirdNeighbor7Midi = calculateMidiNote(i, j + 1, k, 7);
 
-                    // Connect Major Third in the 7-limit layer
-                    const majorThirdNeighbor7Id = `note_${i}_${j + 1}_${k}`;
-                    if (j < range && nodeMap.has(majorThirdNeighbor7Id)) addEdge(seventhNodeId, majorThirdNeighbor7Id, 'majorThird');
-                }
+                    addEdge(seventhNode, nodeMap.get(fifthNeighbor7Midi.toString()), 'perfectFifth');
+                    addEdge(seventhNode, nodeMap.get(majorThirdNeighbor7Midi.toString()), 'majorThird');
+
+                    // Add connections between different k-layers if needed (more complex topology)
+                    // Example: Connect (i,j,k) to (i',j', -k) based on some interval logic
+                 }
              }
         }
     }
