@@ -12,19 +12,75 @@ import { playTone } from '@/lib/audio'; // Import the audio playback function
 import { Button } from '@/components/ui/button';
 import { Volume2, VolumeX } from 'lucide-react'; // Icons for mute toggle
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // For mute button tooltip
+import TonnetzLegend from '@/components/tonnetz-legend';
 
 interface TonnetzVisualizerProps {
   limit: IntonationLimit;
 }
 
-const NODE_COLOR = 0xEEEEEE; // Light gray nodes
-const EDGE_COLOR = 0xEEEEEE; // Light gray lines
+const DEFAULT_NODE_COLOR = 0xFF0000; // Red
 const HOVER_COLOR = 0x00ADB5; // Teal accent color
 const CLICK_COLOR = 0x007A7F; // Darker teal for click feedback
 const BACKGROUND_COLOR = 0x222831; // Dark blue background
 const LABEL_COLOR = 'rgb(238, 238, 238)'; // Light gray #EEEEEE
 
+
 const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
+
+
+    // Function to get the color for a given note label
+
+  const getNodeColor = (label: string): number => {
+    switch (label) {
+      case 'C': return 0xFF0000; // Red
+      case 'C#': return 0xFFA500; // Orange
+      case 'D': return 0xFFFF00; // Yellow
+      case 'D#': return 0x00FF00; // Green
+      case 'E': return 0x00FFFF; // Cyan
+      case 'F': return 0x0000FF; // Blue
+      case 'F#': return 0x4B0082; // Indigo
+      case 'G': return 0xEE82EE; // Violet
+      case 'G#': return 0xFFC0CB; // Pink
+      case 'A': return 0xFFA07A; // Light Salmon
+      case 'A#': return 0xADD8E6; // Light Blue
+      case 'B': return 0xFFE4B5; // Moccasin
+      default: return 0xEEEEEE; // Light Gray
+    }
+  };
+
+    const noteColors = {
+        'C': getNodeColor('C'),
+        'C#': getNodeColor('C#'),
+        'D': getNodeColor('D'),
+        'D#': getNodeColor('D#'),
+        'E': getNodeColor('E'),
+        'F': getNodeColor('F'),
+        'F#': getNodeColor('F#'),
+        'G': getNodeColor('G'),
+        'G#': getNodeColor('G#'),
+        'A': getNodeColor('A'),
+        'A#': getNodeColor('A#'),
+        'B': getNodeColor('B'),
+    };
+  // Function to get the color for a given edge type
+    const getEdgeColor = (type: string): number => {
+        switch (type) {
+            case 'third':
+                return 0x00FF00; // Green
+            case 'fifth':
+                return 0x0000FF; // Blue
+            default:
+                return 0x000000; // Black
+        }
+    };
+    const edgeColors = {
+        'third': getEdgeColor('third'),
+        'fifth': getEdgeColor('fifth'),
+    };
+
+
+
+
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -50,7 +106,7 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
       if (nodeObject instanceof THREE.Mesh) {
           const originalColor = (nodeObject.material as THREE.MeshPhongMaterial).color.getHex();
           (nodeObject.material as THREE.MeshPhongMaterial).color.setHex(CLICK_COLOR);
-          setTimeout(() => {
+          setTimeout(() => {  
               // Restore original color, considering hover state
               const currentIntersectedId = intersectedRef.current?.userData?.originalId ?? intersectedRef.current?.name;
               if (nodeObject.name === currentIntersectedId && intersectedRef.current) {
@@ -82,10 +138,10 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
           if (intersectedRef.current !== firstIntersect) {
                // Restore previous intersected object's color if it exists
                if (intersectedRef.current) {
-                   (intersectedRef.current.material as THREE.MeshPhongMaterial).color.setHex(intersectedRef.current.userData.originalColor ?? NODE_COLOR);
+                   (intersectedRef.current.material as THREE.MeshPhongMaterial).color.setHex(intersectedRef.current.userData.originalColor );
                }
                // Store new intersected object and its original color
-               intersectedRef.current = firstIntersect;
+               intersectedRef.current = firstIntersect;   
                intersectedRef.current.userData.originalColor = (firstIntersect.material as THREE.MeshPhongMaterial).color.getHex();
                // Apply hover color
                (firstIntersect.material as THREE.MeshPhongMaterial).color.setHex(HOVER_COLOR);
@@ -94,7 +150,7 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
       } else {
           // No intersection, restore previous object's color if it exists
           if (intersectedRef.current) {
-              (intersectedRef.current.material as THREE.MeshPhongMaterial).color.setHex(intersectedRef.current.userData.originalColor ?? NODE_COLOR);
+              (intersectedRef.current.material as THREE.MeshPhongMaterial).color.setHex(intersectedRef.current.userData.originalColor );
               mountRef.current.style.cursor = 'default';
           }
           intersectedRef.current = null;
@@ -275,13 +331,13 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
     // Create Nodes (Spheres)
     const nodeGeometry = new THREE.SphereGeometry(0.25, 20, 20); // Slightly larger, more detail
     const nodeMaterial = new THREE.MeshPhongMaterial({
-        color: NODE_COLOR,
+        color: DEFAULT_NODE_COLOR,
         shininess: 30, // Add some shine
        // flatShading: true, // Optional: different look
      });
 
     nodes.forEach((node: TonnetzNode) => {
-      const sphere = new THREE.Mesh(nodeGeometry, nodeMaterial.clone());
+      const sphere = new THREE.Mesh(nodeGeometry, nodeMaterial.clone());      
       sphere.position.set(node.x, node.y, node.z);
       sphere.name = node.id; // Use the unique node ID as the object name
       sphere.userData = { originalId: node.id }; // Store original ID if name changes
@@ -297,14 +353,17 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
        labelDiv.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)'; // Add shadow for readability
        labelDiv.style.pointerEvents = 'none'; // Make sure labels don't block clicks on spheres
 
+
        const nodeLabel = new CSS2DObject(labelDiv);
        nodeLabel.position.set(0, 0.35, 0); // Offset label slightly above the node center
        sphere.add(nodeLabel); // Attach label to the sphere mesh
+        sphere.material.color.setHex(getNodeColor(node.label))
+        sphere.userData.originalColor = getNodeColor(node.label)
 
     });
 
     // Create Edges (Lines)
-    const edgeMaterial = new THREE.LineBasicMaterial({ color: EDGE_COLOR, linewidth: 1 });
+    const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 1 });
     edges.forEach((edge: TonnetzEdge) => {
       const points = [
         new THREE.Vector3(edge.source.x, edge.source.y, edge.source.z),
@@ -313,6 +372,7 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
       const edgeGeometry = new THREE.BufferGeometry().setFromPoints(points);
       const line = new THREE.Line(edgeGeometry, edgeMaterial.clone());
       line.userData = { type: edge.type }; // Store edge type if needed later
+      line.material.color.setHex(getEdgeColor(edge.type));
       tonnetzGroupRef.current?.add(line);
     });
 
@@ -370,6 +430,7 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
   return (
       <div className="relative w-full h-full">
           <div ref={mountRef} className="w-full h-full" />
+          <TonnetzLegend noteColors={noteColors} edgeColors={edgeColors} />
            <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
