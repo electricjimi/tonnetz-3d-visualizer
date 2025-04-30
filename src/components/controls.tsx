@@ -21,12 +21,15 @@ const Controls: FC<ControlsProps> = ({ currentLimit, onLimitChange }) => {
     <TooltipProvider>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 p-4 bg-card rounded-lg shadow-md border border-border">
             <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-foreground mr-2">Intonation Limit:</span>
+                <span className="text-sm font-medium text-card-foreground mr-2">Intonation Limit:</span>
                 <Button
                     variant={currentLimit === 5 ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => onLimitChange(5)}
-                    className={currentLimit === 5 ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-foreground hover:bg-accent/10'}
+                    // Ensure proper contrast for selected/unselected states on dark bg
+                    className={currentLimit === 5
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        : 'text-card-foreground border-input hover:bg-accent hover:text-accent-foreground'}
                     aria-pressed={currentLimit === 5}
                 >
                     Limit 5
@@ -35,17 +38,20 @@ const Controls: FC<ControlsProps> = ({ currentLimit, onLimitChange }) => {
                     variant={currentLimit === 7 ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => onLimitChange(7)}
-                     className={currentLimit === 7 ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-foreground hover:bg-accent/10'}
+                    className={currentLimit === 7
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        : 'text-card-foreground border-input hover:bg-accent hover:text-accent-foreground'}
                      aria-pressed={currentLimit === 7}
                 >
                     Limit 7
                 </Button>
             </div>
 
+            {/* Control hints - ensure text color is readable */}
             <div className="hidden sm:flex items-center gap-4 ml-auto">
                  <Tooltip>
                     <TooltipTrigger asChild>
-                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1 text-sm text-muted-foreground cursor-default">
                             <RotateCcw size={16} /> Rotate
                         </span>
                     </TooltipTrigger>
@@ -55,7 +61,7 @@ const Controls: FC<ControlsProps> = ({ currentLimit, onLimitChange }) => {
                 </Tooltip>
                  <Tooltip>
                     <TooltipTrigger asChild>
-                         <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                         <span className="flex items-center gap-1 text-sm text-muted-foreground cursor-default">
                             <ZoomIn size={16} />/<ZoomOut size={16}/> Zoom
                         </span>
                     </TooltipTrigger>
@@ -65,7 +71,7 @@ const Controls: FC<ControlsProps> = ({ currentLimit, onLimitChange }) => {
                 </Tooltip>
                  <Tooltip>
                     <TooltipTrigger asChild>
-                         <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                         <span className="flex items-center gap-1 text-sm text-muted-foreground cursor-default">
                             <Move size={16} /> Pan
                         </span>
                     </TooltipTrigger>

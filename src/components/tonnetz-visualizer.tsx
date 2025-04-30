@@ -18,11 +18,11 @@ interface TonnetzVisualizerProps {
   limit: IntonationLimit;
 }
 
-const DEFAULT_NODE_COLOR = 0xFF0000; // Red
+const DEFAULT_NODE_COLOR = 0xFF0000; // Red (Keep node colors, but adjust background/labels)
 const HOVER_COLOR = 0x00ADB5; // Teal accent color
 const CLICK_COLOR = 0x007A7F; // Darker teal for click feedback
 const BACKGROUND_COLOR = 0x222831; // Dark blue background
-const LABEL_COLOR = 'rgb(238, 238, 238)'; // Light gray #EEEEEE
+const LABEL_COLOR = 'rgb(238, 238, 238)'; // Light gray label color
 
 
 const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
@@ -31,20 +31,21 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
     // Function to get the color for a given note label
 
   const getNodeColor = (label: string): number => {
+    // Keep distinct node colors for visual clarity
     switch (label) {
       case 'C': return 0xFF0000; // Red
       case 'C#': return 0xFFA500; // Orange
       case 'D': return 0xFFFF00; // Yellow
-      case 'D#': return 0x00FF00; // Green
-      case 'E': return 0x00FFFF; // Cyan
-      case 'F': return 0x0000FF; // Blue
-      case 'F#': return 0x4B0082; // Indigo
-      case 'G': return 0xEE82EE; // Violet
-      case 'G#': return 0xFFC0CB; // Pink
-      case 'A': return 0xFFA07A; // Light Salmon
-      case 'A#': return 0xADD8E6; // Light Blue
-      case 'B': return 0xFFE4B5; // Moccasin
-      default: return 0xEEEEEE; // Light Gray
+      case 'D#': return 0x32CD32; // LimeGreen (Brighter Green)
+      case 'E': return 0x0000FF; // Blue
+      case 'F': return 0x4B0082; // Indigo
+      case 'F#': return 0x8A2BE2; // BlueViolet
+      case 'G': return 0xFF1493; // DeepPink
+      case 'G#': return 0xFF69B4; // HotPink
+      case 'A': return 0x00CED1; // DarkTurquoise
+      case 'A#': return 0x4682B4; // SteelBlue
+      case 'B': return 0xD2691E; // Chocolate (Brown)
+      default: return 0x808080; // Gray for unknowns
     }
   };
 
@@ -63,23 +64,21 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
         'B': getNodeColor('B'),
     };
   // Function to get the color for a given edge type
-    const getEdgeColor = (type: string): number => {
+    const getEdgeColor = (type: TonnetzEdge['type']): number => {
         switch (type) {
-            case 'third':
-                return 0x00FF00; // Green
-            case 'fifth':
-                return 0x0000FF; // Blue
-            default:
-                return 0x000000; // Black
+            case 'majorThird': return 0xEEEEEE; // Light Gray for major thirds
+            case 'minorThird': return 0xBBBBBB; // Slightly darker gray for minor thirds
+            case 'perfectFifth': return 0xDDDDDD; // Medium light gray for fifths
+            case 'harmonicSeventh': return 0x00ADB5; // Teal for harmonic sevenths
+            default: return 0x696969; // DimGray for any unexpected types
         }
     };
     const edgeColors = {
-        'third': getEdgeColor('third'),
-        'fifth': getEdgeColor('fifth'),
+        'Major Third': getEdgeColor('majorThird'),
+        'Minor Third': getEdgeColor('minorThird'),
+        'Perfect Fifth': getEdgeColor('perfectFifth'),
+        'Harmonic Seventh': getEdgeColor('harmonicSeventh'), // Only relevant for limit 7
     };
-
-
-
 
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -104,9 +103,9 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
       // Visual feedback (briefly change color)
       const nodeObject = tonnetzGroupRef.current?.getObjectByName(nodeData.id);
       if (nodeObject instanceof THREE.Mesh) {
-          const originalColor = (nodeObject.material as THREE.MeshPhongMaterial).color.getHex();
+          const originalColor = nodeObject.userData.originalColor ?? getNodeColor(nodeData.label);
           (nodeObject.material as THREE.MeshPhongMaterial).color.setHex(CLICK_COLOR);
-          setTimeout(() => {  
+          setTimeout(() => {
               // Restore original color, considering hover state
               const currentIntersectedId = intersectedRef.current?.userData?.originalId ?? intersectedRef.current?.name;
               if (nodeObject.name === currentIntersectedId && intersectedRef.current) {
@@ -116,41 +115,39 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
               }
           }, 150); // Duration of the click feedback color
       }
-  }, [isMuted]);
+  }, [isMuted]); // Removed getNodeColor from deps as it's stable
 
 
   // --- Mouse Interaction (Hover & Click) ---
    const onPointerMove = useCallback((event: PointerEvent) => {
       if (!mountRef.current || !cameraRef.current || !tonnetzGroupRef.current) return;
 
-      // calculate pointer position in normalized device coordinates
-      // (-1 to +1) for both components
       const rect = mountRef.current.getBoundingClientRect();
       pointerRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       pointerRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
       raycasterRef.current.setFromCamera(pointerRef.current, cameraRef.current);
-      const intersects = raycasterRef.current.intersectObjects(tonnetzGroupRef.current.children.filter(c => c instanceof THREE.Mesh), false); // Intersect only meshes
+      const intersects = raycasterRef.current.intersectObjects(tonnetzGroupRef.current.children.filter(c => c instanceof THREE.Mesh), false);
 
       if (intersects.length > 0) {
           const firstIntersect = intersects[0].object as THREE.Mesh;
-          // Check if the intersected object is different from the previously intersected one
           if (intersectedRef.current !== firstIntersect) {
-               // Restore previous intersected object's color if it exists
                if (intersectedRef.current) {
-                   (intersectedRef.current.material as THREE.MeshPhongMaterial).color.setHex(intersectedRef.current.userData.originalColor );
+                   const originalColor = intersectedRef.current.userData.originalColor;
+                   (intersectedRef.current.material as THREE.MeshPhongMaterial).color.setHex(originalColor );
                }
-               // Store new intersected object and its original color
-               intersectedRef.current = firstIntersect;   
-               intersectedRef.current.userData.originalColor = (firstIntersect.material as THREE.MeshPhongMaterial).color.getHex();
-               // Apply hover color
+               intersectedRef.current = firstIntersect;
+               // Store original color if not already stored
+               if(intersectedRef.current.userData.originalColor === undefined) {
+                 intersectedRef.current.userData.originalColor = (firstIntersect.material as THREE.MeshPhongMaterial).color.getHex();
+               }
                (firstIntersect.material as THREE.MeshPhongMaterial).color.setHex(HOVER_COLOR);
                mountRef.current.style.cursor = 'pointer';
           }
       } else {
-          // No intersection, restore previous object's color if it exists
           if (intersectedRef.current) {
-              (intersectedRef.current.material as THREE.MeshPhongMaterial).color.setHex(intersectedRef.current.userData.originalColor );
+              const originalColor = intersectedRef.current.userData.originalColor;
+              (intersectedRef.current.material as THREE.MeshPhongMaterial).color.setHex(originalColor );
               mountRef.current.style.cursor = 'default';
           }
           intersectedRef.current = null;
@@ -160,12 +157,13 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
 
   const onClick = useCallback((event: MouseEvent) => {
       if (intersectedRef.current) {
-          const nodeData = nodes.find(n => n.id === (intersectedRef.current?.userData?.originalId ?? intersectedRef.current?.name) );
+          // Find node using the stored originalId from userData
+          const nodeData = nodes.find(n => n.id === intersectedRef.current?.userData?.originalId);
           if (nodeData) {
               handleNodeClick(nodeData);
           }
       }
-  }, [nodes, handleNodeClick]); // Dependencies: nodes, handleNodeClick
+  }, [nodes, handleNodeClick]);
 
 
   // --- Scene Setup Effect ---
@@ -181,8 +179,8 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
     sceneRef.current.background = new THREE.Color(BACKGROUND_COLOR);
 
     // Camera setup
-    cameraRef.current = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000); // Adjusted FOV slightly
-    cameraRef.current.position.z = 20; // Start further back
+    cameraRef.current = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+    cameraRef.current.position.z = 20;
 
     // Renderer setup (WebGL)
     rendererRef.current = new THREE.WebGLRenderer({ antialias: true });
@@ -195,19 +193,20 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
     labelRendererRef.current.setSize(width, height);
     labelRendererRef.current.domElement.style.position = 'absolute';
     labelRendererRef.current.domElement.style.top = '0px';
-    labelRendererRef.current.domElement.style.pointerEvents = 'none'; // Allow clicks to pass through
+    labelRendererRef.current.domElement.style.pointerEvents = 'none'; // Labels don't block clicks
     currentMount.appendChild(labelRendererRef.current.domElement);
 
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Adjust intensity as needed
     sceneRef.current.add(ambientLight);
-    const pointLight1 = new THREE.PointLight(0xffffff, 0.6);
+    const pointLight1 = new THREE.PointLight(0xffffff, 0.6, 100); // Slightly less intense point light
     pointLight1.position.set(15, 15, 15);
     sceneRef.current.add(pointLight1);
-     const pointLight2 = new THREE.PointLight(0xffffff, 0.4);
+    const pointLight2 = new THREE.PointLight(0xffffff, 0.4, 100);
     pointLight2.position.set(-15, -10, 10);
     sceneRef.current.add(pointLight2);
+
 
     // Orbit Controls
     controlsRef.current = new OrbitControls(cameraRef.current, rendererRef.current.domElement);
@@ -216,8 +215,8 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
     controlsRef.current.rotateSpeed = 0.6;
     controlsRef.current.zoomSpeed = 0.9;
     controlsRef.current.panSpeed = 0.6;
-    controlsRef.current.minDistance = 3; // Prevent zooming too close
-    controlsRef.current.maxDistance = 100; // Prevent zooming too far
+    controlsRef.current.minDistance = 3;
+    controlsRef.current.maxDistance = 100;
 
 
     // Handle resize
@@ -226,7 +225,7 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
         const newWidth = currentMount.clientWidth;
         const newHeight = currentMount.clientHeight;
         rendererRef.current.setSize(newWidth, newHeight);
-        labelRendererRef.current.setSize(newWidth, newHeight); // Resize label renderer
+        labelRendererRef.current.setSize(newWidth, newHeight);
         cameraRef.current.aspect = newWidth / newHeight;
         cameraRef.current.updateProjectionMatrix();
       }
@@ -258,7 +257,7 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
       }
       controlsRef.current?.dispose();
       rendererRef.current?.dispose();
-      labelRendererRef.current?.domElement.remove(); // Remove label renderer DOM
+      labelRendererRef.current?.domElement.remove(); // Remove label renderer's element
 
       if (currentMount && rendererRef.current) {
          if (currentMount.contains(rendererRef.current.domElement)) {
@@ -269,22 +268,22 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
       // Dispose geometries and materials
       tonnetzGroupRef.current?.traverse((object) => {
         if (object instanceof THREE.Mesh) {
-          object.geometry.dispose();
+          object.geometry?.dispose();
           if (Array.isArray(object.material)) {
-            object.material.forEach(material => material.dispose());
+            object.material.forEach(material => material?.dispose());
           } else if (object.material) {
-            object.material.dispose();
+            object.material?.dispose();
           }
         } else if (object instanceof THREE.Line) {
-           object.geometry.dispose();
+           object.geometry?.dispose();
            if (Array.isArray(object.material)) {
-             object.material.forEach(material => material.dispose());
+             object.material.forEach(material => material?.dispose());
            } else if (object.material){
-             object.material.dispose();
+             object.material?.dispose();
            }
         } else if (object instanceof CSS2DObject) {
-             // Labels are DOM elements managed by CSS2DRenderer, less direct disposal needed here
-             // but ensure they are removed from the group.
+           // CSS2DObjects manage their own DOM elements, remove parent cleans up
+           object.removeFromParent();
         }
       });
        sceneRef.current?.remove(tonnetzGroupRef.current!); // Ensure group removal
@@ -305,19 +304,21 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
 
      // Clear previous Tonnetz
     if (tonnetzGroupRef.current) {
-        // Dispose old geometries/materials/labels before removing
         tonnetzGroupRef.current.traverse((object) => {
              if (object instanceof THREE.Mesh) {
-                object.geometry.dispose();
-                 if (Array.isArray(object.material)) object.material.forEach(m => m.dispose());
-                 else if (object.material) object.material.dispose();
+                object.geometry?.dispose();
+                 if (Array.isArray(object.material)) object.material.forEach(m => m?.dispose());
+                 else if (object.material) object.material?.dispose();
              } else if (object instanceof THREE.Line) {
-                 object.geometry.dispose();
-                 if (Array.isArray(object.material)) object.material.forEach(m => m.dispose());
-                 else if (object.material) object.material.dispose();
+                 object.geometry?.dispose();
+                 if (Array.isArray(object.material)) object.material.forEach(m => m?.dispose());
+                 else if (object.material) object.material?.dispose();
              } else if (object instanceof CSS2DObject) {
-                 object.removeFromParent(); // Remove label from the scene graph
-                 // DOM element removal is handled by CSS2DRenderer
+                  // Remove the DOM element associated with the label
+                 if (object.element.parentNode) {
+                    object.element.parentNode.removeChild(object.element);
+                 }
+                 object.removeFromParent();
              }
          });
         sceneRef.current.remove(tonnetzGroupRef.current);
@@ -326,118 +327,122 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
 
 
     tonnetzGroupRef.current = new THREE.Group();
-    tonnetzGroupRef.current.name = "TonnetzNetwork"; // Name for easier debugging
+    tonnetzGroupRef.current.name = "TonnetzNetwork";
 
     // Create Nodes (Spheres)
-    const nodeGeometry = new THREE.SphereGeometry(0.25, 20, 20); // Slightly larger, more detail
+    const nodeGeometry = new THREE.SphereGeometry(0.25, 20, 20); // Good size/detail balance
+    // Material is cloned per node to allow individual color changes
     const nodeMaterial = new THREE.MeshPhongMaterial({
-        color: DEFAULT_NODE_COLOR,
-        shininess: 30, // Add some shine
-       // flatShading: true, // Optional: different look
+        shininess: 30, // Adjust shininess for dark background
+        //flatShading: true, // Can uncomment for a different look
      });
 
     nodes.forEach((node: TonnetzNode) => {
-      const sphere = new THREE.Mesh(nodeGeometry, nodeMaterial.clone());      
+      const sphereMaterialInstance = nodeMaterial.clone();
+      const nodeColor = getNodeColor(node.label); // Get color based on label
+      sphereMaterialInstance.color.setHex(nodeColor);
+
+      const sphere = new THREE.Mesh(nodeGeometry, sphereMaterialInstance);
       sphere.position.set(node.x, node.y, node.z);
-      sphere.name = node.id; // Use the unique node ID as the object name
-      sphere.userData = { originalId: node.id }; // Store original ID if name changes
+      sphere.name = node.id; // Use the unique node ID
+      sphere.userData = { originalId: node.id, originalColor: nodeColor }; // Store ID and original color
       tonnetzGroupRef.current?.add(sphere);
 
       // Create Labels (CSS2DObject)
        const labelDiv = document.createElement('div');
-       labelDiv.className = 'tonnetz-label'; // For potential CSS styling
+       labelDiv.className = 'tonnetz-label'; // Use class from globals.css
        labelDiv.textContent = node.label;
-       labelDiv.style.color = LABEL_COLOR;
-       labelDiv.style.fontSize = '10px'; // Smaller font size
-       labelDiv.style.fontFamily = 'sans-serif';
-       labelDiv.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)'; // Add shadow for readability
-       labelDiv.style.pointerEvents = 'none'; // Make sure labels don't block clicks on spheres
-
+       // Styles are now primarily handled by CSS class
+       // labelDiv.style.color = LABEL_COLOR; // Set by CSS
+       // labelDiv.style.fontWeight = 'bold'; // Set by CSS
+       // labelDiv.style.textShadow = ... // Set by CSS
 
        const nodeLabel = new CSS2DObject(labelDiv);
-       nodeLabel.position.set(0, 0.35, 0); // Offset label slightly above the node center
-       sphere.add(nodeLabel); // Attach label to the sphere mesh
-        sphere.material.color.setHex(getNodeColor(node.label))
-        sphere.userData.originalColor = getNodeColor(node.label)
-
+       nodeLabel.position.set(0, 0.35, 0); // Offset label slightly above
+       sphere.add(nodeLabel); // Attach label to the sphere
     });
 
     // Create Edges (Lines)
-    const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 1 });
+    const edgeMaterialBase = new THREE.LineBasicMaterial({
+        linewidth: 1, // Thinner lines for better contrast
+        vertexColors: false, // Use single color per line
+        transparent: true,
+        opacity: 0.8 // Slightly transparent lines
+     });
     edges.forEach((edge: TonnetzEdge) => {
       const points = [
         new THREE.Vector3(edge.source.x, edge.source.y, edge.source.z),
         new THREE.Vector3(edge.target.x, edge.target.y, edge.target.z),
       ];
       const edgeGeometry = new THREE.BufferGeometry().setFromPoints(points);
-      const line = new THREE.Line(edgeGeometry, edgeMaterial.clone());
-      line.userData = { type: edge.type }; // Store edge type if needed later
-      line.material.color.setHex(getEdgeColor(edge.type));
+      const lineMaterialInstance = edgeMaterialBase.clone();
+      lineMaterialInstance.color.setHex(getEdgeColor(edge.type)); // Set color based on type
+      const line = new THREE.Line(edgeGeometry, lineMaterialInstance);
+      line.userData = { type: edge.type };
       tonnetzGroupRef.current?.add(line);
     });
 
     sceneRef.current.add(tonnetzGroupRef.current);
 
      // Auto-adjust camera to fit the new Tonnetz
-     if (tonnetzGroupRef.current.children.length > 0) {
+     if (tonnetzGroupRef.current.children.length > 0 && cameraRef.current && controlsRef.current) {
         const boundingBox = new THREE.Box3().setFromObject(tonnetzGroupRef.current);
         const center = boundingBox.getCenter(new THREE.Vector3());
         const size = boundingBox.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
         const fov = cameraRef.current.fov * (Math.PI / 180);
-        let cameraZ = Math.abs((maxDim / 2) / Math.tan(fov / 2)); // Calculate distance to fit
-        cameraZ *= 1.6; // Add padding multiplier (adjust as needed)
+        let cameraZ = Math.abs((maxDim / 2) / Math.tan(fov / 2));
+        cameraZ = Math.max(cameraZ * 1.6, 8); // Ensure min distance and add padding
 
-        const targetPosition = new THREE.Vector3(center.x, center.y, center.z + Math.max(cameraZ, 8)); // Ensure min distance
+        const targetPosition = new THREE.Vector3(center.x, center.y, center.z + cameraZ);
 
-        if (controlsRef.current) {
-            controlsRef.current.target.copy(center);
+        // Smooth camera transition
+        const startPosition = cameraRef.current.position.clone();
+        const startTarget = controlsRef.current.target.clone();
+        let t = 0;
+        const duration = 0.6; // seconds
+        let lastTime: number | null = null;
 
-            // Smooth camera transition (optional, can use a library like GSAP/Tween.js)
-            const startPosition = cameraRef.current.position.clone();
-            let t = 0;
-            const duration = 0.6; // seconds for transition
-            let lastTime: number | null = null;
+        const animateCamera = (time: number) => {
+            if (!startPosition || !cameraRef.current || !controlsRef.current) return;
+            if (lastTime === null) lastTime = time;
+            const delta = (time - lastTime) / 1000;
+            lastTime = time;
+            t += delta / duration;
+            t = Math.min(t, 1);
 
-            const animateCamera = (time: number) => {
-                if (!startPosition || !cameraRef.current || !controlsRef.current) return;
-                if (lastTime === null) lastTime = time;
-                const delta = (time - lastTime) / 1000;
-                lastTime = time;
-                t += delta / duration;
-                t = Math.min(t, 1); // Clamp t to 1
+            cameraRef.current.position.lerpVectors(startPosition, targetPosition, t);
+            controlsRef.current.target.lerpVectors(startTarget, center, t); // Smooth target transition too
+            controlsRef.current.update();
 
-                cameraRef.current.position.lerpVectors(startPosition, targetPosition, t);
-                cameraRef.current.lookAt(controlsRef.current.target); // Ensure looking at target during transition
-                controlsRef.current.update(); // Update controls during animation
+            if (t < 1) {
+                requestAnimationFrame(animateCamera);
+            }
+        };
+        requestAnimationFrame(animateCamera);
 
-                if (t < 1) {
-                    requestAnimationFrame(animateCamera);
-                }
-            };
-            requestAnimationFrame(animateCamera);
-
-        } else {
-           cameraRef.current.position.copy(targetPosition);
-           cameraRef.current.lookAt(center);
-        }
      }
 
 
-  }, [nodes, edges, limit]); // Re-run when data changes
+  }, [nodes, edges, limit]); // Re-run when data or limit changes
 
 
   return (
       <div className="relative w-full h-full">
           <div ref={mountRef} className="w-full h-full" />
-          <TonnetzLegend noteColors={noteColors} edgeColors={edgeColors} />
+          <TonnetzLegend noteColors={noteColors} edgeColors={limit === 7 ? edgeColors : { // Only show H7 for limit 7
+              'Major Third': edgeColors['Major Third'],
+              'Minor Third': edgeColors['Minor Third'],
+              'Perfect Fifth': edgeColors['Perfect Fifth']
+          }} />
            <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute bottom-4 right-4 z-10 text-foreground hover:bg-accent/20 hover:text-accent"
+                      // Adjust button appearance for dark background
+                      className="absolute bottom-4 right-4 z-10 text-secondary-foreground hover:bg-accent hover:text-accent-foreground"
                       onClick={() => setIsMuted(!isMuted)}
                     >
                       {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}

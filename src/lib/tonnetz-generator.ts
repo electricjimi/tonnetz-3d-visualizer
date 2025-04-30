@@ -95,7 +95,7 @@ export function generateTonnetzData(limit: IntonationLimit): { nodes: TonnetzNod
   // Generation parameters
   const rangeP3 = 2; // How many fifth steps away from center
   const rangeP5 = 2; // How many third steps away from center
-  const rangeP7 = (limit === 7) ? 1 : 0; // How many seventh steps away (-1, 0, 1 for Limit 7)
+  const rangeP7 = (limit === 7) ? 1 : 0; // Limit 7: p7 = -1, 0, 1. Limit 5: p7 = 0 only.
   const scaleFactor = 3.0; // Spacing in XY plane
   const scaleFactorZ = 3.5; // Spacing along Z axis for Limit 7
 
@@ -107,8 +107,11 @@ export function generateTonnetzData(limit: IntonationLimit): { nodes: TonnetzNod
         const p7End = (limit === 7) ? rangeP7 : 0;
 
         for (let p7 = p7Start; p7 <= p7End; p7++) {
-             // Optional: Constrain total complexity if needed
-             // if (Math.abs(p3) + Math.abs(p5) + Math.abs(p7) > maxComplexity) continue;
+             // **Constraint for Limit 7:** Only include nodes where p7 is NOT 0 if the limit is 7.
+             // For Limit 5, p7 is always 0 anyway.
+             // We want to *keep* p7=0 nodes for Limit 7 as the base layer.
+             // The request was to *only* show p7=-1 and p7=1 layers *in addition* to p7=0.
+             // The existing logic correctly includes p7=0, p7=-1, p7=1 for Limit 7.
 
              const nodeId = `node_${p3}_${p5}_${p7}`;
              const nodeKey = `${p3}_${p5}_${p7}`;
@@ -123,13 +126,16 @@ export function generateTonnetzData(limit: IntonationLimit): { nodes: TonnetzNod
              const label = getNoteLabel(approxMidi, true);
              const { x, y, z } = calculateCoordinates(p3, p5, p7, scaleFactor, scaleFactorZ);
 
-             // Determine node type (heuristic)
-             let nodeType: TonnetzNode['type'] = 'other';
-             if (p7 === 0) {
-                 nodeType = ((p3 + p5) % 2 === 0) ? 'major' : 'minor'; // Simple 5-limit heuristic
+             // Determine node type (heuristic) - refined
+             let nodeType: TonnetzNode['type'];
+             if (p7 !== 0) {
+                 nodeType = 'harmonicSeventhRelated'; // Node explicitly involves the 7th harmonic
+             } else if ((p3 + p5) % 2 === 0) {
+                 nodeType = 'majorTriadComponent'; // Typically part of major triads in 5-limit
              } else {
-                 nodeType = 'dominant7'; // Nodes involving factor 7
+                 nodeType = 'minorTriadComponent'; // Typically part of minor triads in 5-limit
              }
+
 
              // Create and store the node
              const newNode: TonnetzNode = {
@@ -139,7 +145,7 @@ export function generateTonnetzData(limit: IntonationLimit): { nodes: TonnetzNod
                  noteName,
                  x, y, z,
                  frequency,
-                 type: nodeType // Correctly assign the calculated nodeType
+                 type: nodeType // Assign the calculated nodeType
              };
              nodes.push(newNode);
              nodeMap.set(nodeKey, newNode);
@@ -149,11 +155,11 @@ export function generateTonnetzData(limit: IntonationLimit): { nodes: TonnetzNod
 
    // Helper function to add edges, avoiding duplicates
    const edgeSet = new Set<string>(); // Store edge signatures "nodeId1_nodeId2"
-   const addEdge = (sourceNode: TonnetzNode, targetNode: TonnetzNode, type: TonnetzEdge['type']) => {
+   const addEdge = (sourceNode: TonnetzNode, targetNode: TonnetzNode, edgeType: TonnetzEdge['type']) => { // Renamed parameter here
        // Ensure consistent order for the key
        const key = [sourceNode.id, targetNode.id].sort().join('_');
        if (!edgeSet.has(key)) {
-           edges.push({ source: sourceNode, target: targetNode, type });
+           edges.push({ source: sourceNode, target: targetNode, type: edgeType }); // Use the parameter name
            edgeSet.add(key);
        }
    };
@@ -187,6 +193,7 @@ export function generateTonnetzData(limit: IntonationLimit): { nodes: TonnetzNod
            const targetNode = nodeMap.get(targetKey);
 
            if (targetNode) {
+                // Pass neighborInfo.type as the edgeType argument
                addEdge(sourceNode, targetNode, neighborInfo.type);
            }
        });

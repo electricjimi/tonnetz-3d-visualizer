@@ -14,7 +14,8 @@ export interface TonnetzNode {
   y: number;
   z: number;
   frequency: number; // Frequency in Hz for playback (calculated using JI)
-  type: 'major' | 'minor' | 'dominant7' | 'other'; // Helps in styling or identification (heuristic)
+  // Refined node types for better semantic meaning
+  type: 'majorTriadComponent' | 'minorTriadComponent' | 'harmonicSeventhRelated' | 'other';
 }
 
 export interface TonnetzEdge {

@@ -8,75 +8,94 @@ body {
 
 @layer base {
   :root {
-    --background: 215 19% 16%; /* #222831 */
-    --foreground: 0 0% 93%; /* #EEEEEE */
-    --card: 215 19% 18%; /* Slightly lighter than background */
-    --card-foreground: 0 0% 93%; /* #EEEEEE */
-    --popover: 215 19% 18%;
-    --popover-foreground: 0 0% 93%;
-    --primary: 183 100% 36%; /* #00ADB5 - Accent */
-    --primary-foreground: 215 19% 12%; /* Darker for contrast on Accent */
-    --secondary: 0 0% 30%; /* Mid-gray for secondary elements */
-    --secondary-foreground: 0 0% 93%; /* #EEEEEE */
-    --muted: 0 0% 25%; /* Darker gray */
+    /* Light Theme (Remains as a reference, but dark theme is active) */
+    --background-light: 0 0% 100%; /* White */
+    --foreground-light: 0 0% 3.9%; /* Default black */
+    --card-light: 0 0% 100%; /* White */
+    --card-foreground-light: 0 0% 3.9%; /* Default black */
+    --popover-light: 0 0% 100%;
+    --popover-foreground-light: 0 0% 3.9%;
+    --primary-light: 183 100% 36%; /* #00ADB5 - Accent Teal */
+    --primary-foreground-light: 0 0% 100%; /* White for contrast on Teal */
+    --secondary-light: 0 0% 96.1%; /* Light gray for secondary elements */
+    --secondary-foreground-light: 0 0% 9%; /* Dark gray for text on light gray */
+    --muted-light: 0 0% 96.1%; /* Light gray */
+    --muted-foreground-light: 0 0% 45.1%; /* Mid-gray for muted text */
+    --accent-light: 183 100% 36%; /* #00ADB5 */
+    --accent-foreground-light: 0 0% 100%; /* White text on Accent */
+    --destructive-light: 0 84.2% 60.2%; /* Default destructive */
+    --destructive-foreground-light: 0 0% 98%;
+    --border-light: 0 0% 89.8%; /* Light gray border */
+    --input-light: 0 0% 89.8%; /* Light gray input background */
+    --ring-light: 183 100% 46%; /* Accent color for rings */
+    --radius: 0.5rem;
+
+
+    /* Dark Theme (Applied by default or via .dark class) */
+    --background: 222 14% 16%; /* Dark Blue #222831 */
+    --foreground: 0 0% 93.3%; /* Light Gray #EEEEEE */
+    --card: 222 14% 20%; /* Slightly lighter dark blue for cards */
+    --card-foreground: 0 0% 93.3%; /* Light Gray #EEEEEE */
+    --popover: 222 14% 12%; /* Even darker blue for popovers */
+    --popover-foreground: 0 0% 93.3%; /* Light Gray #EEEEEE */
+    --primary: 183 100% 36%; /* #00ADB5 - Accent Teal */
+    --primary-foreground: 222 14% 16%; /* Dark Blue for text on primary */
+    --secondary: 0 0% 20%; /* Dark Gray for secondary elements */
+    --secondary-foreground: 0 0% 93.3%; /* Light Gray for text on dark gray */
+    --muted: 0 0% 25%; /* Mid-dark gray for muted */
     --muted-foreground: 0 0% 60%; /* Lighter gray for muted text */
     --accent: 183 100% 36%; /* #00ADB5 */
-    --accent-foreground: 215 19% 12%;
-    --destructive: 0 72% 51%; /* Default destructive */
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 25%; /* Muted border */
-    --input: 0 0% 25%; /* Muted input background */
-    --ring: 183 100% 46%; /* Accent color for rings */
+    --accent-foreground: 222 14% 16%; /* Dark Blue text on Accent */
+    --destructive: 0 72% 51%; /* Adjusted destructive red for dark */
+    --destructive-foreground: 0 0% 98%; /* White text on destructive */
+    --border: 0 0% 30%; /* Dark gray border */
+    --input: 0 0% 25%; /* Mid-dark gray input background */
+    --ring: 183 100% 46%; /* Accent color for rings (slightly brighter) */
     --chart-1: 183 100% 36%;
     --chart-2: 210 100% 60%;
     --chart-3: 30 100% 50%;
     --chart-4: 120 60% 50%;
     --chart-5: 270 70% 60%;
     --radius: 0.5rem;
-    --sidebar-background: 215 19% 14%; /* Slightly darker sidebar */
-    --sidebar-foreground: 0 0% 93%;
+    /* Sidebar specific variables (dark theme adjusted) */
+    --sidebar-background: 222 14% 18%; /* Slightly lighter dark blue sidebar */
+    --sidebar-foreground: 0 0% 93.3%;
     --sidebar-primary: 183 100% 36%;
-    --sidebar-primary-foreground: 215 19% 12%;
-    --sidebar-accent: 183 100% 26%; /* Darker accent for hover */
-    --sidebar-accent-foreground: 0 0% 93%;
-    --sidebar-border: 0 0% 25%;
+    --sidebar-primary-foreground: 222 14% 16%;
+    --sidebar-accent: 183 100% 40%; /* Slightly brighter accent for hover */
+    --sidebar-accent-foreground: 222 14% 16%;
+    --sidebar-border: 0 0% 30%;
     --sidebar-ring: 183 100% 46%;
   }
 
   .dark {
-    /* Keep dark theme same as light theme as requested */
-    --background: 215 19% 16%; /* #222831 */
-    --foreground: 0 0% 93%; /* #EEEEEE */
-    --card: 215 19% 18%;
-    --card-foreground: 0 0% 93%;
-    --popover: 215 19% 18%;
-    --popover-foreground: 0 0% 93%;
-    --primary: 183 100% 36%; /* #00ADB5 - Accent */
-    --primary-foreground: 215 19% 12%;
-    --secondary: 0 0% 30%;
-    --secondary-foreground: 0 0% 93%;
+    /* Explicitly define dark theme variables if .dark class is used */
+    --background: 222 14% 16%; /* Dark Blue #222831 */
+    --foreground: 0 0% 93.3%; /* Light Gray #EEEEEE */
+    --card: 222 14% 20%;
+    --card-foreground: 0 0% 93.3%;
+    --popover: 222 14% 12%;
+    --popover-foreground: 0 0% 93.3%;
+    --primary: 183 100% 36%; /* #00ADB5 */
+    --primary-foreground: 222 14% 16%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 93.3%;
     --muted: 0 0% 25%;
     --muted-foreground: 0 0% 60%;
     --accent: 183 100% 36%; /* #00ADB5 */
-    --accent-foreground: 215 19% 12%;
+    --accent-foreground: 222 14% 16%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 25%;
+    --border: 0 0% 30%;
     --input: 0 0% 25%;
     --ring: 183 100% 46%;
-    --chart-1: 183 100% 36%;
-    --chart-2: 210 100% 60%;
-    --chart-3: 30 100% 50%;
-    --chart-4: 120 60% 50%;
-    --chart-5: 270 70% 60%;
-    --radius: 0.5rem;
-    --sidebar-background: 215 19% 14%;
-    --sidebar-foreground: 0 0% 93%;
+    --sidebar-background: 222 14% 18%;
+    --sidebar-foreground: 0 0% 93.3%;
     --sidebar-primary: 183 100% 36%;
-    --sidebar-primary-foreground: 215 19% 12%;
-    --sidebar-accent: 183 100% 26%;
-    --sidebar-accent-foreground: 0 0% 93%;
-    --sidebar-border: 0 0% 25%;
+    --sidebar-primary-foreground: 222 14% 16%;
+    --sidebar-accent: 183 100% 40%;
+    --sidebar-accent-foreground: 222 14% 16%;
+    --sidebar-border: 0 0% 30%;
     --sidebar-ring: 183 100% 46%;
   }
 }
@@ -93,13 +112,15 @@ body {
 
 /* Styling for CSS2DRenderer labels */
 .tonnetz-label {
-  color: hsl(var(--foreground)); /* Use theme foreground color */
+  color: hsl(var(--foreground)); /* Use theme foreground color (Light Gray) */
   font-family: sans-serif;
-  font-size: 12px; /* Adjust size as needed */
-  padding: 2px 4px;
-  /* background-color: hsla(var(--background), 0.6); Optional semi-transparent background */
-  /* border-radius: 3px; */
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); /* Improve readability */
+  font-size: 11px; /* Adjust size as needed */
+  font-weight: bold; /* Make labels bold */
+  padding: 1px 3px;
+  /* Optional: Add a very subtle dark background for contrast if needed */
+  /* background-color: hsla(var(--background), 0.6); */
+  /* border-radius: 2px; */
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7); /* Dark shadow for readability on light nodes */
   pointer-events: none; /* Important: Prevent labels from blocking interactions */
   user-select: none; /* Prevent text selection */
   white-space: nowrap; /* Keep label on one line */
