@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+   transpilePackages: ['three'], // Add this line to transpile three.js
   images: {
     remotePatterns: [
       {
