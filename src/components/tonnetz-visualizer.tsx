@@ -66,9 +66,9 @@ const TonnetzVisualizer: FC<TonnetzVisualizerProps> = ({ limit }) => {
   // Function to get the color for a given edge type
     const getEdgeColor = (type: TonnetzEdge['type']): number => {
         switch (type) {
-            case 'majorThird': return 0xEEEEEE; // Light Gray for major thirds
-            case 'minorThird': return 0xBBBBBB; // Slightly darker gray for minor thirds
-            case 'perfectFifth': return 0xDDDDDD; // Medium light gray for fifths
+            case 'majorThird': return 0x0000FF; // Light Gray for major thirds
+            case 'minorThird': return 0x0000FF; // Slightly darker gray for minor thirds
+            case 'perfectFifth': return 0xFF1493; // Medium light gray for fifths
             case 'harmonicSeventh': return 0x00ADB5; // Teal for harmonic sevenths
             default: return 0x696969; // DimGray for any unexpected types
         }
