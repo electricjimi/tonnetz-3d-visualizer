@@ -1,9 +1,7 @@
 # Tonnetz Visualizer
 
-<video width="100%" controls>
-  <source src="https://github.com/electricjimi/tonnetz-3d-visualizer/tree/master/resources/demo-video.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+Demo video:
+ https://github.com/electricjimi/tonnetz-3d-visualizer/tree/master/resources/demo-video.mp4
 
 
 ## What is it?
