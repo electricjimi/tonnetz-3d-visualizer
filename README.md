@@ -1,6 +1,6 @@
 # Tonnetz Visualizer
 
-Demo video:
+##Demo video
  https://github.com/electricjimi/tonnetz-3d-visualizer/tree/master/resources/demo-video.mp4
 
 
@@ -25,7 +25,4 @@ This interface is fully interactive. You can:
 *   **Click:** Click on a node to hear the corresponding pitch.
 *   **Hover:** Hover over nodes to highlight them.
 *   **Drag and Zoom:** Drag to rotate the network and zoom in/out to examine the relationships from different perspectives.
-
-## Demo
-You can see the Tonnetz Visualizer in action in the embedded video above.
 
